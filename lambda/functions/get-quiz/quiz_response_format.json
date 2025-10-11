@@ -1,0 +1,24 @@
+{
+  "id": "number",
+  "question": {
+    "kr": "string",
+    "en": "string"
+  },
+  "choices": [
+    {
+      "id": "number",
+      "label": "string",
+      "text": {
+        "kr": "string",
+        "en": "string"
+      },
+      "is_correct": "boolean"
+    }
+  ],
+  "answer": {
+    "choice_ids": ["number"],
+    "labels": ["string"]
+  },
+  "explanation": "string",
+  "total_question_count": "number"
+}
