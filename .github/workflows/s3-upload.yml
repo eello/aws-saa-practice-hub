@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'quiz-smrys/SAA-C03*.md'
+  workflow_dispatch:
 
 permissions:
   id-token: write
