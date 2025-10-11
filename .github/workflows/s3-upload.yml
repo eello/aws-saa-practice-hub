@@ -1,0 +1,49 @@
+name: Secure Upload SAA-C03 Markdown to S3 (question folder)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'quiz-smrys/SAA-C03*.md' # SAA-C03 시리즈 새 파일만 감시
+
+permissions:
+  id-token: write # GitHub → AWS OIDC 인증용
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ 저장소 체크아웃
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ AWS 자격 증명 구성 (Secrets에서 불러오기)
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 3️⃣ 새로 추가된 SAA-C03 파일만 탐지
+      - name: Detect newly added SAA-C03 markdown files
+        id: changed
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            quiz-smrys/SAA-C03*.md
+          since_last_remote_commit: true
+          json: true
+          write_output_files: false
+
+      # 4️⃣ 신규 추가된 파일만 S3 question/ 경로로 업로드
+      - name: Upload newly added files to S3
+        if: steps.changed.outputs.added_files != '[]'
+        run: |
+          echo "🆕 Newly added SAA-C03 files detected:"
+          echo "${{ steps.changed.outputs.added_files }}"
+          for file in ${{ fromJson(steps.changed.outputs.added_files) }}; do
+            echo "📤 Uploading $file to S3..."
+            aws s3 cp "$file" "s3://${{ secrets.S3_BUCKET_NAME }}/question/$file"
+          done
