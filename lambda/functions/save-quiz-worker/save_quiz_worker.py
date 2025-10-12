@@ -1,18 +1,21 @@
 import json
 import logging
+import os
 from typing import Dict, List, Sequence, Tuple
 
 import boto3
 import pymysql
 from pymysql.cursors import Cursor
-
 from question_parser import ParseError, Question, parse_markdown_text
 
 s3 = boto3.client("s3")
 ssm = boto3.client("ssm")
+sns = boto3.client("sns")
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+SAVE_RESULT_SNS_TOPIC_ARN = os.environ["SAVE_RESULT_SNS_TOPIC_ARN"]
 
 
 def get_param(name: str) -> str:
@@ -100,6 +103,16 @@ def lambda_handler(event, context):
     logger.info("Connecting to %s as %s", db_host, db_user)
 
     connection = None
+    sns_message = ""
+    sns_subject = "Quiz Save Result"
+
+    def _format_object_name(key: str) -> str:
+        base = os.path.splitext(os.path.basename(key))[0]
+        token = base.split()[-1] if " " in base else base
+        return token.replace("_", "-")
+
+    object_names = ", ".join(_format_object_name(key) for _, key, _ in payloads)
+
     try:
         connection = pymysql.connect(
             host=db_host,
@@ -153,6 +166,12 @@ def lambda_handler(event, context):
             total_counts["answers"],
         )
 
+        sns_subject = "✅ Quiz Save Success"
+        sns_message = (
+            f"{object_names} 문제 저장\n"
+            f"quiz: {total_counts['questions']}, choice: {total_counts['choices']}"
+        )
+
         return {
             "statusCode": 200,
             "body": json.dumps(
@@ -168,9 +187,18 @@ def lambda_handler(event, context):
         if connection is not None:
             connection.rollback()
         logger.exception("Failed to process markdown payloads: %s", exc)
+        sns_subject = "❌ Quiz Save Failed"
+        sns_message = f"{object_names} 파일 저장에 실패했습니다.\n\n{exc}"
         return {"statusCode": 500, "body": json.dumps({"error": str(exc)})}
 
     finally:
         if connection is not None:
             connection.close()
             logger.info("Database connection closed")
+
+        if sns_message:
+            sns.publish(
+                TopicArn=SAVE_RESULT_SNS_TOPIC_ARN,
+                Subject=sns_subject,
+                Message=sns_message,
+            )

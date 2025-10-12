@@ -36,7 +36,9 @@ class ParseError(RuntimeError):
 
 
 def _normalise(text: str) -> str:
-    return text.replace("\r\n", "\n")
+    # Normalize newlines and remove non-printable control characters that may sneak in
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    return re.sub(r"[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f]", "", text)
 
 
 def _split_sections(text: str) -> List[Tuple[int, str]]:
