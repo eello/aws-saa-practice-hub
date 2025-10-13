@@ -120,18 +120,23 @@ def parse_markdown_text(
     questions: List[Question] = []
 
     for qid, body in _split_sections(payload):
-        code_match = CODE_BLOCK_PATTERN.search(body)
-        if not code_match:
+        english_match = None
+        for match in CODE_BLOCK_PATTERN.finditer(body):
+            _, potential_choices = _parse_question_and_choices(match.group(1))
+            if len(potential_choices) >= 4:
+                english_match = match
+                break
+
+        if english_match is None:
             raise ParseError(
                 f"Question {qid} is missing code block with English prompt"
             )
 
-        english_block = code_match.group(1)
-        before = body[: code_match.start()]
-        after = body[code_match.end() :]
+        english_block = english_match.group(0)
+        before, after = body.split(english_block, 1)
 
         question_kr, choices_kr = _parse_question_and_choices(before)
-        question_en, choices_en = _parse_question_and_choices(english_block)
+        question_en, choices_en = _parse_question_and_choices(english_match.group(1))
 
         if len(choices_kr) != len(choices_en):
             raise ParseError(
