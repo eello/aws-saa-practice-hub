@@ -135,8 +135,30 @@ def parse_markdown_text(
         english_block = english_match.group(0)
         before, after = body.split(english_block, 1)
 
-        question_kr, choices_kr = _parse_question_and_choices(before)
+        last_choice_end_offset = -1
+        consumed = 0
+        for raw_line in before.splitlines(True):
+            line = raw_line.rstrip("\r\n")
+            if CHOICE_PATTERN.match(line):
+                last_choice_end_offset = consumed + len(raw_line)
+            consumed += len(raw_line)
+
+        if last_choice_end_offset != -1:
+            english_leading_start = before.find("```", last_choice_end_offset)
+            if english_leading_start == -1:
+                english_leading_start = last_choice_end_offset
+        else:
+            english_leading_start = len(before)
+
+        korean_section = before[:english_leading_start]
+        english_leading_section = before[english_leading_start:]
+
+        question_kr, choices_kr = _parse_question_and_choices(korean_section)
         question_en, choices_en = _parse_question_and_choices(english_match.group(1))
+
+        english_leading_section = english_leading_section.strip()
+        if english_leading_section:
+            question_en = f"{english_leading_section}\n\n{question_en}".strip()
 
         if len(choices_kr) != len(choices_en):
             raise ParseError(
