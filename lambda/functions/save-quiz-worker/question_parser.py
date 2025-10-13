@@ -11,7 +11,7 @@ SECTION_PATTERN = re.compile(r"^##\s*#(\d+)\s*$", re.M)
 CODE_BLOCK_PATTERN = re.compile(r"```(.*?)```", re.S)
 CHOICE_PATTERN = re.compile(r"^\s*(?:[-*]\s*)?([A-Z])\.\s*(.*)")
 ANSWER_LINE_PATTERN = re.compile(r"정답\s*:\s*`?([^`\n]+)`?")
-ANSWER_TOKEN_PATTERN = re.compile(r"(?<![A-Za-z0-9])([A-E])(?![A-Za-z0-9])")
+ANSWER_TOKEN_PATTERN = re.compile(r"(?<![A-Za-z0-9])([A-Z])(?![A-Za-z0-9])")
 
 
 @dataclass
