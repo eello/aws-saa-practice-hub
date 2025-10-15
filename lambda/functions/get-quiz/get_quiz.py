@@ -208,12 +208,12 @@ def lambda_handler(event, context):
                 )
                 description_row = cursor.fetchone()
 
-                cursor.execute("SELECT COUNT(id) AS total_question_count FROM question")
+                cursor.execute("SELECT MAX(id) AS max_question_id FROM question")
                 total_question_count_row = cursor.fetchone()
                 total_question_count = (
-                    total_question_count_row["total_question_count"]
+                    total_question_count_row["max_question_id"]
                     if total_question_count_row
-                    and "total_question_count" in total_question_count_row
+                    and total_question_count_row["max_question_id"] is not None
                     else 0
                 )
 
