@@ -197,6 +197,20 @@
   gap: 1.5rem;
 }
 
+.quiz__alert {
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.12);
+  border-left: 4px solid #3b82f6;
+  color: #1e3a8a;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.quiz__alert + .question-card {
+  margin-top: 0.5rem;
+}
+
 .quiz__back {
   border: none;
   background: rgba(148, 163, 184, 0.2);

@@ -50,7 +50,7 @@ def _split_sections(text: str) -> List[Tuple[int, str]]:
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
         body = text[start:end].strip()
         if not body:
-            raise ParseError(f"Question {qid} has no body")
+            continue
         sections.append((qid, body))
     return sections
 

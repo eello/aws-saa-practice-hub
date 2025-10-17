@@ -289,58 +289,107 @@ export function QuizProvider({ children }) {
     fetchRandomQuestion([], -1)
   }, [fetchRandomQuestion])
 
+  const createMissingMessage = useCallback(
+    (missingIds, direction) => {
+      if (!missingIds || missingIds.length === 0) return null
+      const minId = Math.min(...missingIds)
+      const maxId = Math.max(...missingIds)
+      if (language === 'en') {
+        const rangeText = minId === maxId ? `Question ${minId}` : `Questions ${minId}-${maxId}`
+        const suffix =
+          direction === 'backward'
+            ? ' were skipped because they do not exist when moving backward.'
+            : ' were skipped because they do not exist when moving forward.'
+        return `${rangeText}${suffix}`
+      }
+      const rangeText = minId === maxId ? `문제 ${minId}번` : `문제 ${minId}번부터 ${maxId}번까지`
+      const suffix =
+        direction === 'backward'
+          ? '을(를) 찾을 수 없어 이전 문제로 건너뛰었어요.'
+          : '을(를) 찾을 수 없어 다음 문제로 건너뛰었어요.'
+      return `${rangeText}${suffix}`
+    },
+    [language],
+  )
+
   const goToNextSequential = useCallback(async () => {
     if (!isSequentialMode) return
     const baseId = sequentialQuestionId ?? currentQuestionId ?? 1
-    const nextId = Number(baseId) + 1
-    if (!Number.isFinite(nextId) || nextId < 1) return
+    const maxId = Math.max(Number(totalQuestionsEstimate) || 0, Number(baseId))
+    const missingIds = []
 
-    setSequentialEndReached(false)
-    setLastError(null)
-
-    setSequentialQuestionId(nextId)
-    setCurrentQuestionId(nextId)
-
-    try {
-      await ensureQuestionLoaded(nextId)
-    } catch (error) {
-      if (error instanceof QuestionNotFoundError) {
-        setSequentialEndReached(true)
-        setSequentialQuestionId(baseId)
-        setCurrentQuestionId(baseId)
-      } else {
-        setSequentialQuestionId(baseId)
-        setCurrentQuestionId(baseId)
+    for (let candidate = Number(baseId) + 1; candidate <= maxId; candidate += 1) {
+      try {
+        await ensureQuestionLoaded(candidate)
+        setSequentialQuestionId(candidate)
+        setCurrentQuestionId(candidate)
+        setSequentialEndReached(false)
+        const message = createMissingMessage(missingIds, 'forward')
+        setLastError(message ? new QuestionNotFoundError(message) : null)
+        return
+      } catch (error) {
+        if (error instanceof QuestionNotFoundError) {
+          missingIds.push(candidate)
+          continue
+        }
         setLastError(error)
+        return
       }
     }
-  }, [isSequentialMode, sequentialQuestionId, currentQuestionId, ensureQuestionLoaded])
+
+    const message =
+      createMissingMessage(missingIds, 'forward') ??
+      (language === 'en' ? 'No further questions are available.' : '다음 문제를 더 이상 찾을 수 없어요.')
+    setLastError(new QuestionNotFoundError(message))
+    setSequentialEndReached(true)
+  }, [
+    isSequentialMode,
+    sequentialQuestionId,
+    currentQuestionId,
+    totalQuestionsEstimate,
+    ensureQuestionLoaded,
+    createMissingMessage,
+    language,
+  ])
 
   const goToPreviousSequential = useCallback(async () => {
     if (!isSequentialMode) return
     const baseId = sequentialQuestionId ?? currentQuestionId ?? 1
-    const prevId = Number(baseId) - 1
-    if (prevId < 1) return
+    if (Number(baseId) <= 1) return
 
-    setLastError(null)
-    setSequentialEndReached(false)
+    const missingIds = []
 
-    setSequentialQuestionId(prevId)
-    setCurrentQuestionId(prevId)
-
-    try {
-      await ensureQuestionLoaded(prevId)
-    } catch (error) {
-      if (error instanceof QuestionNotFoundError) {
-        setSequentialQuestionId(baseId)
-        setCurrentQuestionId(baseId)
-      } else {
-        setSequentialQuestionId(baseId)
-        setCurrentQuestionId(baseId)
+    for (let candidate = Number(baseId) - 1; candidate >= 1; candidate -= 1) {
+      try {
+        await ensureQuestionLoaded(candidate)
+        setSequentialQuestionId(candidate)
+        setCurrentQuestionId(candidate)
+        setSequentialEndReached(false)
+        const message = createMissingMessage(missingIds, 'backward')
+        setLastError(message ? new QuestionNotFoundError(message) : null)
+        return
+      } catch (error) {
+        if (error instanceof QuestionNotFoundError) {
+          missingIds.push(candidate)
+          continue
+        }
         setLastError(error)
+        return
       }
     }
-  }, [isSequentialMode, sequentialQuestionId, currentQuestionId, ensureQuestionLoaded])
+
+    const message =
+      createMissingMessage(missingIds, 'backward') ??
+      (language === 'en' ? 'No previous questions are available.' : '이전 문제를 더 이상 찾을 수 없어요.')
+    setLastError(new QuestionNotFoundError(message))
+  }, [
+    isSequentialMode,
+    sequentialQuestionId,
+    currentQuestionId,
+    ensureQuestionLoaded,
+    createMissingMessage,
+    language,
+  ])
 
   const goToPreviousRandom = useCallback(() => {
     if (!isRandomMode) return

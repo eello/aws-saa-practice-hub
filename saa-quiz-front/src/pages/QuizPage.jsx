@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import LanguageToggle from '../components/LanguageToggle.jsx'
 import MarkdownBlock from '../components/MarkdownBlock.jsx'
@@ -37,6 +38,7 @@ function QuizPage() {
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(false)
   const [jumpValue, setJumpValue] = useState('')
   const [jumpError, setJumpError] = useState('')
+  const pageRef = useRef(null)
 
   useEffect(() => {
     if (mode == null) {
@@ -78,6 +80,19 @@ function QuizPage() {
 
   const correctChoiceIdSet = useMemo(() => new Set(correctChoiceIds), [correctChoiceIds])
   const requiredSelectionCount = correctChoiceIds.length
+
+  const errorMessage = useMemo(() => {
+    if (!lastError) return null
+    if (lastError.message) return lastError.message
+    return language === 'en'
+      ? 'An unexpected issue occurred while loading the question.'
+      : '문제를 불러오는 중 예상치 못한 문제가 발생했어요.'
+  }, [lastError, language])
+
+  useEffect(() => {
+    if (!pageRef.current) return
+    pageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [currentQuestionId])
 
   useEffect(() => {
     setSelectedChoiceIds([])
@@ -238,7 +253,7 @@ function QuizPage() {
   }
 
   return (
-    <main className="quiz">
+    <main className="quiz" ref={pageRef}>
       <header className="quiz__header">
         <button type="button" className="quiz__back" onClick={handleBackToLanding}>
           모드 선택으로
@@ -248,6 +263,10 @@ function QuizPage() {
         </div>
         <LanguageToggle value={language} onChange={setLanguage} />
       </header>
+
+      {errorMessage && currentQuestion ? (
+        <div className="quiz__alert" role="status">{errorMessage}</div>
+      ) : null}
 
       <section className="question-card">
         <header className="question-card__header">
@@ -343,7 +362,7 @@ function QuizPage() {
               onClick={goToNextSequential}
               disabled={!hasNextSequential || isLoadingCurrent}
             >
-              다른 문제
+              다음 문제
             </button>
           </div>
         ) : null}
